@@ -144,12 +144,28 @@ module SslRequirement
     request_port = request.port
 
     if ssl
-      port = (request_port == non_ssl_port) ? ssl_port : (request_port || ssl_port)
-      "#{(ssl_host || request_host)}#{determine_port_string(port)}"
+      "#{ssl_host || request_host}#{determine_ssl_port_string request.port}"
     else
-      port = (request_port == ssl_port) ? non_ssl_port : (request_port || non_ssl_port)
-      "#{(non_ssl_host || request_host)}#{determine_port_string(port)}"
+      "#{non_ssl_host || request_host}#{determine_non_ssl_port_string request.port}"
     end
+  end
+
+  def determine_ssl_port_string(request_port)
+    if request_port == non_ssl_port
+      port = ssl_port
+    else
+      port = request_port || ssl_port
+    end
+    determine_port_string port
+  end
+
+  def determine_non_ssl_port_string(request_port)
+    if request_port == ssl_port
+      port = non_ssl_port
+    else
+      port = request_port || non_ssl_port
+    end
+    determine_port_string port
   end
 
   def self.determine_host(host)
