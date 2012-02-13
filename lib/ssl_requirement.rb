@@ -24,7 +24,8 @@ require "active_support/core_ext/class"
 module SslRequirement
   extend ActiveSupport::Concern
 
-  mattr_writer :ssl_host, :ssl_port, :non_ssl_host, :disable_ssl_check
+  mattr_writer :ssl_host, :ssl_port, :non_ssl_host, :non_ssl_port,
+    :disable_ssl_check
   mattr_accessor :redirect_status
 
   def self.ssl_host
@@ -39,6 +40,10 @@ module SslRequirement
     determine_host(@@non_ssl_host) rescue nil
   end
 
+  def self.non_ssl_port
+    @@non_ssl_port ||= 80
+  end
+
   # mattr_reader would generate both ssl_host and self.ssl_host
   def ssl_host
     SslRequirement.ssl_host
@@ -50,6 +55,10 @@ module SslRequirement
 
   def non_ssl_host
     SslRequirement.non_ssl_host
+  end
+
+  def non_ssl_port
+    SslRequirement.non_ssl_port
   end
 
   def self.disable_ssl_check?
@@ -135,9 +144,11 @@ module SslRequirement
     request_port = request.port
 
     if ssl
-      "#{(ssl_host || request_host)}#{determine_port_string(request_port || ssl_port)}"
+      port = (request_port == non_ssl_port) ? ssl_port : (request_port || ssl_port)
+      "#{(ssl_host || request_host)}#{determine_port_string(port)}"
     else
-      "#{(non_ssl_host || request_host)}#{determine_port_string(request_port)}"
+      port = (request_port == ssl_port) ? non_ssl_port : (request_port || non_ssl_port)
+      "#{(non_ssl_host || request_host)}#{determine_port_string(port)}"
     end
   end
 
