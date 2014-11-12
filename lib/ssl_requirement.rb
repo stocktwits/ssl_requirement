@@ -25,7 +25,7 @@ module SslRequirement
   extend ActiveSupport::Concern
 
   mattr_writer :ssl_host, :ssl_port, :non_ssl_host, :non_ssl_port,
-    :disable_ssl_check
+    :disable_ssl_check, :ssl_header
   mattr_accessor :redirect_status
 
   def self.ssl_host
@@ -64,7 +64,10 @@ module SslRequirement
   def self.disable_ssl_check?
     @@disable_ssl_check ||= false
   end
-
+  
+  def self.ssl_header
+    @@ssl_header ||= false
+  end
 
   included do
     class_attribute :ssl_required_actions
@@ -118,16 +121,24 @@ module SslRequirement
   NORMAL_PORTS = [80, 443]
 
   private
+  def is_header_ssl(request)
+    ssl_header && request.headers[ ssl_header ].present?
+  end
+
+  def is_ssl(request)
+    request.ssl? || is_header_ssl(request)
+  end
+
   def ensure_proper_protocol
     return true if SslRequirement.disable_ssl_check?
 
-    if ssl_required? && !request.ssl?
+    if ssl_required? && !is_ssl(request)
       redirect_to determine_redirect_url(request, true), :status => (redirect_status || :found)
       flash.keep
       return false
-    elsif request.ssl? && ssl_allowed?
+    elsif is_ssl(request) && ssl_allowed?
       return true
-    elsif request.ssl? && !ssl_required?
+    elsif is_ssl(request) && !ssl_required?
       redirect_to determine_redirect_url(request, false), :status => (redirect_status || :found)
       flash.keep
       return false
